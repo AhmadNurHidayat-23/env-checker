@@ -1,0 +1,6 @@
+import { it, expect } from 'vitest'; import { checkEnv } from './env';
+it('mendeteksi hilang, duplikat, kosong, dan port tanpa nilai rahasia', () => { const report = checkEnv('API_KEY=\nMISSING=\nDB_PORT=3306', 'API_KEY=super-secret-value\nAPI_KEY=another-secret\nDB_PORT=oops\nEMPTY='); expect(report.findings.map(f => f.kind)).toEqual(expect.arrayContaining(['duplikat','hilang','port','kosong'])); expect(JSON.stringify(report)).not.toMatch(/super-secret-value|another-secret|oops/); });
+it('mendeteksi kutip rusak dan format tanpa membocorkan baris', () => { const r = checkEnv('', 'API_KEY="private\n'); expect(r.findings[0].kind).toBe('kutip'); expect(JSON.stringify(r)).not.toContain('private'); });
+it('memahami komentar, export, kutip multiline, dan referensi', () => { const r = checkEnv('A=', 'export A="line1\nline2"\nB=ok # comment\nC="\$' + '{UNKNOWN}"'); expect(r.envKeys).toBe(3); expect(r.findings.some(f => f.kind === 'referensi')).toBe(true); });
+it('URL dan boolean diperiksa tanpa menampilkan nilai', () => { const r = checkEnv('', 'APP_URL=ftp://private-host\nAPP_DEBUG=yes'); expect(r.findings).toHaveLength(2); expect(JSON.stringify(r)).not.toContain('private-host'); });
+it('tidak menganggap hash dalam kutip sebagai komentar', () => { expect(checkEnv('A=', 'A="#secret"').findings).toHaveLength(0); });
